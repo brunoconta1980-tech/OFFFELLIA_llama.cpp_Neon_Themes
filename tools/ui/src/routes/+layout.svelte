@@ -8,8 +8,6 @@
 	import { PwaMetaTags, PwaRefreshAlert } from '$lib/components/pwa';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import {
-		FAVICON_PATHS,
-		FAVICON_SELECTORS,
 		HEADERS,
 		NEW_CHAT_TAB_ID,
 		ROUTES,
@@ -35,7 +33,6 @@
 	import { untrack } from 'svelte';
 	import { onMount } from 'svelte';
 	import { Toaster } from 'svelte-sonner';
-	import { pwaAssetsHead } from 'virtual:pwa-assets/head';
 
 	let { children } = $props();
 
@@ -56,25 +53,9 @@
 		settingsStore.config[SETTINGS_KEYS.SHOW_BUILD_VERSION] as boolean
 	);
 
-	// Keep the hook object intact: destructuring needRefreshByStorage reads the getter once and freezes it
+	// needRefreshByStorage stays on the object: its getter is read in the template.
 	const pwa = usePwa();
 	const { needRefresh, updateServiceWorker } = pwa;
-
-	function updateFavicon() {
-		const dark = deviceStore.systemTheme.isDark;
-
-		let icoLink = document.querySelector(FAVICON_SELECTORS.ICO_48X48) as HTMLLinkElement | null;
-
-		if (icoLink) {
-			icoLink.href = dark ? FAVICON_PATHS.ICO_DARK : FAVICON_PATHS.ICO_LIGHT;
-		}
-
-		let svgLink = document.querySelector(FAVICON_SELECTORS.SVG_ANY) as HTMLLinkElement | null;
-
-		if (svgLink) {
-			svgLink.href = dark ? FAVICON_PATHS.SVG_DARK : FAVICON_PATHS.SVG_LIGHT;
-		}
-	}
 
 	function navigateToTab(direction: -1 | 1) {
 		// only makes sense with conversation tabs enabled
@@ -181,7 +162,6 @@
 	}
 
 	onMount(() => {
-		updateFavicon();
 		// snapshot of every backend running stream on first load, populates the sidebar spinners
 		// so the user sees each conv that has a live inference, even ones not opened yet
 		void chatStore.syncRemoteRunningStreams();
@@ -194,12 +174,6 @@
 
 		void chatStore.syncRemoteRunningStreams();
 	}
-
-	$effect(() => {
-		void deviceStore.systemTheme.isDark;
-
-		updateFavicon();
-	});
 
 	// Initialize server properties on app load (run once)
 	$effect(() => {
@@ -295,17 +269,9 @@
 </script>
 
 <svelte:head>
-	{#if pwaAssetsHead.themeColor}
-		<meta content={pwaAssetsHead.themeColor.content} name="theme-color" />
-	{/if}
-
 	{#if settingsStore.config.customCss}
 		<style use:customCss></style>
 	{/if}
-
-	{#each pwaAssetsHead.links as link (link.href)}
-		<link {...link} />
-	{/each}
 
 	<PwaMetaTags />
 </svelte:head>

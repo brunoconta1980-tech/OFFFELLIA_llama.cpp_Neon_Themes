@@ -79,6 +79,22 @@ uint32_t llama_hparams::n_ff_exp(uint32_t il) const {
     GGML_ABORT("fatal error");
 }
 
+uint32_t llama_hparams::n_expert_layer(uint32_t il) const {
+    if (il < n_layer_all && n_expert_arr[il] > 0) {
+        return n_expert_arr[il];
+    }
+
+    return n_expert;
+}
+
+uint32_t llama_hparams::n_swa_layer(uint32_t il) const {
+    if (swa_per_layer && il < n_layer_all) {
+        return n_swa_arr[il];
+    }
+
+    return n_swa;
+}
+
 uint32_t llama_hparams::n_expert_used(uint32_t il) const {
     if (il < n_layer_all) {
         return n_expert_used_arr[il];

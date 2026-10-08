@@ -4,15 +4,20 @@ import { SETTINGS_KEYS } from './settings-keys.constants';
 import { TITLE_GENERATION } from './title-generation.constants';
 import { FILE_GLOB_SEARCH_PICKERS } from './working-directory.constants';
 import {
+	Circle,
 	Code,
 	Database,
+	Flame,
 	Funnel,
+	Layers,
+	Leaf,
 	ListRestart,
 	Monitor,
 	Moon,
 	PencilRuler,
 	SlidersVertical,
-	Sun
+	Sun,
+	Zap
 } from '@lucide/svelte';
 import { SyncableParameterType } from '$lib/enums';
 import { SettingsFieldType } from '$lib/enums/settings.enums';
@@ -63,13 +68,18 @@ export const SETTINGS_REGISTRY: SettingsSectionEntry[] = [
 		settings: [
 			{
 				defaultValue: ColorMode.SYSTEM,
-				help: 'Choose the color theme for the interface. You can choose between System (follows your device settings), Light, or Dark.',
+				help: 'Choose the color theme. System follows the device. The neon themes add a glowing cyberpunk palette.',
 				key: SETTINGS_KEYS.THEME,
 				label: 'Theme',
 				options: [
 					{ icon: Monitor, label: 'System', value: ColorMode.SYSTEM },
 					{ icon: Sun, label: 'Light', value: ColorMode.LIGHT },
-					{ icon: Moon, label: 'Dark', value: ColorMode.DARK }
+					{ icon: Moon, label: 'Dark', value: ColorMode.DARK },
+					{ icon: Zap, label: 'Azul neon', value: ColorMode.NEON_BLUE },
+					{ icon: Flame, label: 'Vermelho neon', value: ColorMode.NEON_RED },
+					{ icon: Leaf, label: 'Verde neon', value: ColorMode.NEON_GREEN },
+					{ icon: Circle, label: 'Preto e cinza neon', value: ColorMode.NEON_BLACK_GREY },
+					{ icon: Layers, label: 'Alumínio escovado', value: ColorMode.NEON_ALUMINUM }
 				],
 				type: SettingsFieldType.SELECT
 			},

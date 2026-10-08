@@ -71,6 +71,8 @@ struct llama_hparams {
     // per-token adapter selection. -1 when the model has no such layer.
     int32_t  router_layer = -1;
     uint32_t n_expert = 0;
+    // per-layer expert count; 0 means "use n_expert"
+    std::array<uint32_t, LLAMA_MAX_LAYERS> n_expert_arr = {};
     uint32_t n_rel_attn_bkts = 0;
 
     // TODO: this needs to be reworked
@@ -171,7 +173,10 @@ struct llama_hparams {
     // Sliding Window Attention (SWA)
     llama_swa_type swa_type = LLAMA_SWA_TYPE_NONE;
     // the size of the sliding window (0 - no SWA)
+    // when swa_per_layer is set, n_swa is the maximum and n_swa_arr[il] is the window of layer il (0 = full attention)
     uint32_t n_swa = 0;
+    bool     swa_per_layer = false;
+    std::array<uint32_t, LLAMA_MAX_LAYERS> n_swa_arr = {};
 
     // see llama_non_causal_type
     // note: for SWA_FULL, older tokens (outside the current ubatch) are still window-clipped
@@ -414,6 +419,10 @@ struct llama_hparams {
     uint32_t n_ff(uint32_t il = 0) const;
 
     uint32_t n_ff_exp(uint32_t il = 0) const;
+
+    uint32_t n_expert_layer(uint32_t il = 0) const;
+
+    uint32_t n_swa_layer(uint32_t il = 0) const;
 
     uint32_t n_expert_used(uint32_t il = 0) const;
 

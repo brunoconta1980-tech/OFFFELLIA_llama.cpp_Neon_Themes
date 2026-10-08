@@ -1521,7 +1521,12 @@ ggml_tensor * llm_graph_context::build_lora_mm(
           ggml_tensor * w,
           ggml_tensor * cur,
           ggml_tensor * w_s) const {
-    ggml_tensor * res = ggml_mul_mat(ctx0, w, cur);
+    // Quant blocks (256 for K-quants) may pad the weight row. The extra columns are zeros.
+    ggml_tensor * cur_mm = cur;
+    if (w->ne[0] > cur->ne[0]) {
+        cur_mm = ggml_pad(ctx0, cur, (int) (w->ne[0] - cur->ne[0]), 0, 0, 0);
+    }
+    ggml_tensor * res = ggml_mul_mat(ctx0, w, cur_mm);
 
     if (prec_policy) {
         prec_policy->apply(res);
@@ -1561,7 +1566,11 @@ ggml_tensor * llm_graph_context::build_lora_mm_id(
           ggml_tensor * cur, // ggml_tensor * b
           ggml_tensor * ids,
           ggml_tensor * w_s) const {
-    ggml_tensor * res = ggml_mul_mat_id(ctx0, w, cur, ids);
+    ggml_tensor * cur_mm = cur;
+    if (w->ne[0] > cur->ne[0]) {
+        cur_mm = ggml_pad(ctx0, cur, (int) (w->ne[0] - cur->ne[0]), 0, 0, 0);
+    }
+    ggml_tensor * res = ggml_mul_mat_id(ctx0, w, cur_mm, ids);
 
     if (prec_policy) {
         prec_policy->apply(res);
@@ -2407,6 +2416,10 @@ ggml_tensor * llm_graph_context::build_inp_embd(ggml_tensor * tok_embd) const {
         auto & cur = inps[0];
 
         cur = ggml_get_rows(ctx0, tok_embd, inp->tokens);
+        // Drop columns added so the quant block divides the embedding row.
+        if (cur->ne[0] > n_embd) {
+            cur = ggml_cont(ctx0, ggml_view_2d(ctx0, cur, n_embd, cur->ne[1], cur->nb[1], 0));
+        }
 
         // apply lora for embedding tokens if needed
         for (const auto & lora : *loras) {

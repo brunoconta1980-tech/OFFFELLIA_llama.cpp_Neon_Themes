@@ -386,60 +386,14 @@ static bool tensor_allows_quantization(const llama_model_quantize_params * param
 // tensor type selection
 //
 
-// incompatible tensor shapes are handled here - fallback to a compatible type
-static ggml_type tensor_type_fallback(quantize_state_impl & qs, const ggml_tensor * t, const ggml_type target_type) {
-    ggml_type return_type = target_type;
-
-    const int64_t ncols = t->ne[0];
-    const int64_t qk_k = ggml_blck_size(target_type);
-
-    if (ncols % qk_k != 0) { // this tensor's shape is incompatible with this quant
-        LLAMA_LOG_WARN("warning: %-36s - ncols %6" PRId64 " not divisible by %3" PRId64 " (required for type %7s) ",
-                        t->name, ncols, qk_k, ggml_type_name(target_type));
-        ++qs.n_fallback;
-
-        switch (target_type) {
-            // types on the left: block size 256
-            case GGML_TYPE_IQ1_S:
-            case GGML_TYPE_IQ1_M:
-            case GGML_TYPE_IQ2_XXS:
-            case GGML_TYPE_IQ2_XS:
-            case GGML_TYPE_IQ2_S:
-            case GGML_TYPE_IQ3_XXS:
-            case GGML_TYPE_IQ3_S:   // types on the right: block size 32
-            case GGML_TYPE_IQ4_XS:  return_type = GGML_TYPE_IQ4_NL; break;
-            case GGML_TYPE_Q2_0:
-            case GGML_TYPE_Q2_K:
-            case GGML_TYPE_Q3_K:
-            case GGML_TYPE_TQ1_0:
-            case GGML_TYPE_TQ2_0:   return_type = GGML_TYPE_Q4_0;   break;
-            case GGML_TYPE_Q4_K:    return_type = GGML_TYPE_Q5_0;   break;
-            case GGML_TYPE_Q5_K:    return_type = GGML_TYPE_Q5_1;   break;
-            case GGML_TYPE_Q6_K:    return_type = GGML_TYPE_Q8_0;   break;
-            default:
-                if (qk_k <= 32) {
-                    // the target is already a 32-block type, so there is no smaller block to demote to
-                    // the check below turns it into F16, as a 256-block type does when its fallback does not fit
-                    return_type = target_type;
-                    break;
-                }
-                throw std::runtime_error(format("no tensor type fallback is defined for type %s",
-                                                ggml_type_name(target_type)));
-        }
-        if (ncols % ggml_blck_size(return_type) != 0) {
-            //
-            // the fallback return type is still not compatible for this tensor!
-            //
-            // most likely, this tensor's first dimension is not divisible by 32.
-            // this is very rare. we can either abort the quantization, or
-            // fallback to F16 / F32.
-            //
-            LLAMA_LOG_WARN("(WARNING: must use F16 due to unusual shape) ");
-            return_type = GGML_TYPE_F16;
-        }
-        LLAMA_LOG_WARN("-> falling back to %7s\n", ggml_type_name(return_type));
+// Round a row up to a whole quant block. The extra columns are zeros.
+// gpt-oss-puzzle rows are 2880 wide; K-quants need 256, so the stored row becomes 3072.
+static int64_t quant_row_padded(ggml_type type, int64_t ne0) {
+    const int64_t blck = ggml_blck_size(type);
+    if (blck <= 1 || ne0 % blck == 0) {
+        return ne0;
     }
-    return return_type;
+    return ((ne0 + blck - 1) / blck) * blck;
 }
 
 // internal standard logic for selecting the target tensor type based on tensor category, ftype, and model arch
@@ -491,13 +445,10 @@ static ggml_type llama_tensor_get_type_impl(quantize_state_impl & qs, ggml_type 
         if (qs.params->output_tensor_type < GGML_TYPE_COUNT) {
             new_type = qs.params->output_tensor_type;
         } else {
-            const int64_t nx = tensor->ne[0];
-            const int64_t qk_k = ggml_blck_size(new_type);
-
             if (ftype == LLAMA_FTYPE_MOSTLY_MXFP4_MOE) {
                 new_type = GGML_TYPE_Q8_0;
             }
-            else if (arch == LLM_ARCH_FALCON || nx % qk_k != 0) {
+            else if (arch == LLM_ARCH_FALCON) {
                 new_type = GGML_TYPE_Q8_0;
             }
             else if (ftype == LLAMA_FTYPE_MOSTLY_IQ2_XXS || ftype == LLAMA_FTYPE_MOSTLY_IQ2_XS || ftype == LLAMA_FTYPE_MOSTLY_IQ3_XXS ||
@@ -765,8 +716,6 @@ static ggml_type llama_tensor_get_type(quantize_state_impl & qs, const llama_mod
             new_type = llama_tensor_get_type_impl(qs, new_type, tensor, params->ftype, tm.category);
         }
 
-        // incompatible tensor shapes are handled here - fallback to a compatible type
-        new_type = tensor_type_fallback(qs, tensor, new_type);
     }
 
     return new_type;
@@ -1236,13 +1185,18 @@ static void llama_model_quantize_impl(const std::string & fname_inp, const std::
         // If we've decided to quantize to the same type the tensor is already
         // in then there's nothing to do.
         bool quantize = cur_type != new_type;
+        const int64_t n_per_row_src = tensor->ne[0];
+        const int64_t n_per_row_dst = quantize ? quant_row_padded(new_type, n_per_row_src) : n_per_row_src;
 
         size_t new_size;
 
         if (params->dry_run) {
             // the --dry-run option calculates the final quantization size without quantizing
             if (quantize) {
-                new_size = ggml_nrows(tensor) * ggml_row_size(new_type, tensor->ne[0]);
+                new_size = ggml_nrows(tensor) * ggml_row_size(new_type, n_per_row_dst);
+                if (n_per_row_dst != n_per_row_src) {
+                    LLAMA_LOG_INFO("pad %" PRId64 "->%" PRId64 ", ", n_per_row_src, n_per_row_dst);
+                }
                 LLAMA_LOG_INFO("size = %8.2f MiB -> %8.2f MiB (%s)\n",
                                tensor_size/1024.0/1024.0,
                                new_size/1024.0/1024.0,
@@ -1303,32 +1257,59 @@ static void llama_model_quantize_impl(const std::string & fname_inp, const std::
                     throw std::runtime_error(format("Missing importance matrix for tensor %s in a very low-bit quantization", tensor->name));
                 }
 
-                if (ggml_is_quantized(tensor->type) && !params->allow_requantize) {
+                // MXFP4/NVFP4 are the native storage of gpt-oss experts, not a previous llama quant.
+                const bool native_fp4 = tensor->type == GGML_TYPE_MXFP4 || tensor->type == GGML_TYPE_NVFP4;
+                if (ggml_is_quantized(tensor->type) && !params->allow_requantize && !native_fp4) {
                     throw std::runtime_error(format("requantizing from type %s is disabled", ggml_type_name(tensor->type)));
                 }
 
+                if (n_per_row_dst != n_per_row_src) {
+                    LLAMA_LOG_INFO("pad %" PRId64 "->%" PRId64 ", ", n_per_row_src, n_per_row_dst);
+                }
                 LLAMA_LOG_INFO("converting to %s .. ", ggml_type_name(new_type));
                 fflush(stdout);
 
-                const int64_t n_per_row = tensor->ne[0];
+                const int64_t n_per_row = n_per_row_dst;
                 const int64_t nrows_per_expert = tensor->ne[1];
                 const int64_t nrows_total = tensor->ne[1] * tensor->ne[2];
 
-                const size_t row_size_src = ggml_row_size(tensor->type, n_per_row);
+                const size_t row_size_src = ggml_row_size(tensor->type, n_per_row_src);
                 const size_t row_size_dst = ggml_row_size(new_type,     n_per_row);
 
+                size_t f32_bytes = 0;
+                if (tensor->type != GGML_TYPE_F32) {
+                    f32_bytes += (size_t) n_per_row_src * sizeof(float);
+                }
+                if (n_per_row != n_per_row_src) {
+                    f32_bytes += (size_t) n_per_row * sizeof(float);
+                }
                 // process the rows in slabs, so that the buffers stay below max_buf_size
-                const size_t bytes_per_row = row_size_src + row_size_dst + (tensor->type == GGML_TYPE_F32 ? 0 : n_per_row*sizeof(float));
+                const size_t bytes_per_row = row_size_src + row_size_dst + f32_bytes;
                 const int64_t nrows_slab = std::max<int64_t>(1, std::min<int64_t>(nrows_total, max_buf_size/bytes_per_row));
 
                 static const int64_t min_chunk_size = 32 * 512;
                 const int64_t chunk_size = (n_per_row >= min_chunk_size ? n_per_row : n_per_row * ((min_chunk_size + n_per_row - 1)/n_per_row));
 
+                const float * imatrix_use = imatrix;
+                std::vector<float> imatrix_pad;
+                if (imatrix && n_per_row != n_per_row_src) {
+                    const int64_t n_expert_i = std::max<int64_t>(1, tensor->ne[2]);
+                    imatrix_pad.assign((size_t) n_expert_i * (size_t) n_per_row, 0.0f);
+                    for (int64_t e = 0; e < n_expert_i; ++e) {
+                        memcpy(imatrix_pad.data() + (size_t) e * (size_t) n_per_row,
+                               imatrix + e * n_per_row_src,
+                               (size_t) n_per_row_src * sizeof(float));
+                    }
+                    imatrix_use = imatrix_pad.data();
+                }
+
+                std::vector<no_init<float>> row_pad;
+
                 // process rows across all experts in one pass to keep all threads busy
                 new_size = 0;
                 for (int64_t ir = 0; ir < nrows_total; ir += nrows_slab) {
                     const int64_t nrows_cur = std::min(nrows_slab, nrows_total - ir);
-                    const int64_t nelements_cur = nrows_cur * n_per_row;
+                    const int64_t nelements_cur = nrows_cur * n_per_row_src;
 
                     const void * src = load_range(ir*row_size_src, nrows_cur*row_size_src);
 
@@ -1343,14 +1324,27 @@ static void llama_model_quantize_impl(const std::string & fname_inp, const std::
                         f32_data = (const float *) f32_conv_buf.data();
                     }
 
+                    if (n_per_row != n_per_row_src) {
+                        if (row_pad.size() < (size_t) nrows_cur * (size_t) n_per_row) {
+                            row_pad.resize((size_t) nrows_cur * (size_t) n_per_row);
+                        }
+                        for (int64_t r = 0; r < nrows_cur; ++r) {
+                            float * dst = (float *) row_pad.data() + r * n_per_row;
+                            memcpy(dst, f32_data + r * n_per_row_src, (size_t) n_per_row_src * sizeof(float));
+                            memset(dst + n_per_row_src, 0, (size_t) (n_per_row - n_per_row_src) * sizeof(float));
+                        }
+                        f32_data = (const float *) row_pad.data();
+                    }
+
                     if (work.size() < nrows_cur*row_size_dst) {
                         work.resize(nrows_cur*row_size_dst);
                     }
 
-                    const int64_t nchunk = (nelements_cur + chunk_size - 1)/chunk_size;
+                    const int64_t n_el_q = nrows_cur * n_per_row;
+                    const int64_t nchunk = (n_el_q + chunk_size - 1)/chunk_size;
                     const int64_t nthread_use = nthread > 1 ? std::max((int64_t)1, std::min((int64_t)nthread, nchunk)) : 1;
 
-                    const size_t size_cur = llama_tensor_quantize_impl(new_type, f32_data, work.data(), chunk_size, ir, nrows_cur, nrows_per_expert, n_per_row, imatrix, workers, nthread_use);
+                    const size_t size_cur = llama_tensor_quantize_impl(new_type, f32_data, work.data(), chunk_size, ir, nrows_cur, nrows_per_expert, n_per_row, imatrix_use, workers, nthread_use);
 
                     fout.write((const char *) work.data(), size_cur);
                     new_size += size_cur;
@@ -1361,6 +1355,9 @@ static void llama_model_quantize_impl(const std::string & fname_inp, const std::
             total_size_new += new_size;
 
             // update the gguf metadata as we go
+            if (n_per_row_dst != tensor->ne[0]) {
+                gguf_set_tensor_ne0(ctx_outs[cur_split].get(), metadata[i].name.c_str(), n_per_row_dst);
+            }
             gguf_set_tensor_type(ctx_outs[cur_split].get(), metadata[i].name.c_str(), new_type);
             GGML_ASSERT(gguf_get_tensor_size(ctx_outs[cur_split].get(), gguf_find_tensor(ctx_outs[cur_split].get(), metadata[i].name.c_str())) == new_size);
 

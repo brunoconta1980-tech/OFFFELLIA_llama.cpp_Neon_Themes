@@ -166,6 +166,10 @@ extern "C" {
     //   in such a way that the tensor data remains as one contiguous block (except for padding)
     GGML_API void gguf_set_tensor_type(struct gguf_context * ctx, const char * name, enum ggml_type type);
 
+    // Widen dimension 0 before gguf_set_tensor_type. Strides and offsets are fixed by that call.
+    // Used when a quant block does not divide the original row (the extra columns are zeros).
+    GGML_API void gguf_set_tensor_ne0(struct gguf_context * ctx, const char * name, int64_t ne0);
+
     // assumes that at least gguf_get_tensor_size bytes can be read from data
     GGML_API void gguf_set_tensor_data(struct gguf_context * ctx, const char * name, const void * data);
 

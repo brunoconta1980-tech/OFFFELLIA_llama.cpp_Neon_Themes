@@ -6,7 +6,10 @@ llama_add_compile_flags()
 
 # llama
 
-file(GLOB LLAMA_MODELS_SOURCES "models/*.cpp")
+# Every models/*.cpp is part of libllama, including models/openai-moe-puzzle.cpp
+# (architecture gpt-oss-puzzle). CONFIGURE_DEPENDS picks up a new file on the
+# next build without a separate CMake option.
+file(GLOB LLAMA_MODELS_SOURCES CONFIGURE_DEPENDS "models/*.cpp")
 
 set(LLAMA_CORE_SOURCES
     llama.cpp

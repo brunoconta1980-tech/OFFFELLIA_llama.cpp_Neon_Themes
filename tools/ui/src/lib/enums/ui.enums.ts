@@ -1,6 +1,11 @@
 export enum ColorMode {
 	DARK = 'dark',
 	LIGHT = 'light',
+	NEON_ALUMINUM = 'neon-aluminum',
+	NEON_BLACK_GREY = 'neon-black-grey',
+	NEON_BLUE = 'neon-blue',
+	NEON_GREEN = 'neon-green',
+	NEON_RED = 'neon-red',
 	SYSTEM = 'system'
 }
 

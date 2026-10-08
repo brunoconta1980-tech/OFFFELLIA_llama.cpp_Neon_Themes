@@ -296,6 +296,8 @@ static llama_model * llama_model_mapping(llm_arch arch, const llama_model_params
             return new llama_model_smollm3(params);
         case LLM_ARCH_OPENAI_MOE:
             return new llama_model_openai_moe(params);
+        case LLM_ARCH_OPENAI_MOE_PUZZLE:
+            return new llama_model_openai_moe_puzzle(params);
         case LLM_ARCH_FALCON_H1:
             return new llama_model_falcon_h1(params);
         case LLM_ARCH_LFM2:
@@ -1328,7 +1330,21 @@ void llama_model_base::load_hparams(llama_model_loader & ml) {
     GGML_ASSERT(hparams.n_layer_all > 0 && hparams.n_layer_all <= LLAMA_MAX_LAYERS);
     ml.get_key(LLM_KV_NEXTN_PREDICT_LAYERS,    hparams.n_layer_nextn,   false);
     GGML_ASSERT(hparams.n_layer_nextn <= hparams.n_layer_all);
-    ml.get_key(LLM_KV_EXPERT_COUNT,            hparams.n_expert,        false);
+    std::fill(hparams.n_expert_arr.begin(), hparams.n_expert_arr.end(), 0);
+    std::fill(hparams.n_swa_arr.begin(),    hparams.n_swa_arr.end(),    0);
+    // expert_count is a scalar on uniform MoE and an int32 array on gpt-oss-puzzle
+    if (!ml.get_key_or_arr(LLM_KV_EXPERT_COUNT, hparams.n_expert, false)) {
+        if (ml.get_key_or_arr(LLM_KV_EXPERT_COUNT, hparams.n_expert_arr, hparams.n_layer_all, false)) {
+            hparams.n_expert = 0;
+            for (uint32_t il = 0; il < hparams.n_layer_all; ++il) {
+                hparams.n_expert = std::max(hparams.n_expert, hparams.n_expert_arr[il]);
+            }
+        }
+    } else {
+        for (uint32_t il = 0; il < hparams.n_layer_all; ++il) {
+            hparams.n_expert_arr[il] = hparams.n_expert;
+        }
+    }
     std::fill(hparams.n_expert_used_arr.begin(), hparams.n_expert_used_arr.end(), 0);
     ml.get_key_or_arr(LLM_KV_EXPERT_USED_COUNT, hparams.n_expert_used_arr, hparams.n_layer_all, false);
     ml.get_key(LLM_KV_EXPERT_GROUP_COUNT,      hparams.n_expert_groups, false);
@@ -2200,6 +2216,7 @@ void llama_model::print_info() const {
                 arch == LLM_ARCH_COHERE2MOE ||
                 arch == LLM_ARCH_QWEN3MOE ||
                 arch == LLM_ARCH_OPENAI_MOE ||
+                arch == LLM_ARCH_OPENAI_MOE_PUZZLE ||
                 arch == LLM_ARCH_QWEN3VLMOE ||
                 arch == LLM_ARCH_RND1) {
             LLAMA_LOG_INFO("%s: n_ff_exp              = %d\n",     __func__, hparams.n_ff_exp());
@@ -3160,6 +3177,7 @@ llama_rope_type llama_model_rope_type(const llama_model * model) {
         case LLM_ARCH_HUNYUAN_MOE:
         case LLM_ARCH_JAIS2:
         case LLM_ARCH_OPENAI_MOE:
+        case LLM_ARCH_OPENAI_MOE_PUZZLE:
         case LLM_ARCH_HUNYUAN_DENSE:
         case LLM_ARCH_HY_V3:
         case LLM_ARCH_LFM2:

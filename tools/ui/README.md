@@ -399,7 +399,7 @@ Hooks are the thin view-layer between components and stores: they own UI concern
 | `use-marquee-selection`         | Shift+click / marquee range selection                          |
 | `use-keyboard-shortcuts`        | Global keyboard shortcuts                                      |
 | `use-settings-navigation`       | Settings section navigation                                    |
-| `use-pwa`                       | PWA install/update + version mismatch detection                |
+| `use-pwa`                       | No service worker and no update check; kept so the layout stays stable |
 
 #### Stores (`src/lib/stores/`)
 

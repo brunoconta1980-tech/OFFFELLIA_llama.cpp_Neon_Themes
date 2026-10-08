@@ -1,6 +1,4 @@
-import { writeThemeFavicons } from './scripts/favicon-colorize';
 import {
-	FAVICON_COLORS,
 	PWA_ASSET_GENERATOR,
 	PWA_GENERATOR_DEVICES,
 	THEME_COLORS
@@ -11,18 +9,12 @@ import {
 	defineConfig,
 	minimal2023Preset
 } from '@vite-pwa/assets-generator/config';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
-writeThemeFavicons(FAVICON_COLORS.LIGHT, FAVICON_COLORS.DARK, {
-	padding: PWA_ASSET_GENERATOR.FAVICON_PADDING
-});
 
 export default defineConfig({
 	headLinkOptions: {
 		preset: PWA_ASSET_GENERATOR.LINK_PRESET
 	},
-	images: ['static/favicon.svg'],
+	images: [],
 	preset: combinePresetAndAppleSplashScreens(
 		{
 			...minimal2023Preset,
@@ -33,11 +25,6 @@ export default defineConfig({
 			}
 		},
 		{
-			darkImageResolver: async (imageName: string) => {
-				if (imageName.endsWith('favicon.svg')) {
-					return readFileSync(resolve('static/favicon-dark.svg'));
-				}
-			},
 			darkResizeOptions: {
 				background: THEME_COLORS.BACKGROUND_DARK,
 				fit: PWA_ASSET_GENERATOR.FIT_MODE

@@ -134,8 +134,13 @@ option(LLAMA_BUILD_TOOLS     "llama: build tools"                               
 option(LLAMA_BUILD_EXAMPLES  "llama: build examples"                                                             ${LLAMA_STANDALONE})
 option(LLAMA_BUILD_SERVER    "llama: build server example"                                                       ${LLAMA_STANDALONE})
 option(LLAMA_BUILD_APP       "llama: build the unified binary"                                                   ${LLAMA_STANDALONE})
-option(LLAMA_BUILD_UI        "llama: build the embedded Web UI for server"                                       OFF)
-option(LLAMA_USE_PREBUILT_UI "llama: use prebuilt UI from HF Bucket when available" ON)
+# The embedded UI is built from tools/ui with Vite whenever the server is built.
+# FORCE updates an existing cache so a previous configure cannot keep the
+# prebuilt download or skip Vite.
+set(LLAMA_BUILD_UI ON CACHE BOOL "llama: build the embedded Web UI with Vite" FORCE)
+set(LLAMA_USE_PREBUILT_UI OFF CACHE BOOL "llama: download a prebuilt UI during the build" FORCE)
+# gpt-oss-puzzle ships inside libllama. src/CMakeLists.txt globs models/*.cpp
+# with CONFIGURE_DEPENDS, so there is no cache switch to turn that arch on.
 
 option(LLAMA_TOOLS_INSTALL "llama: install tools" ${LLAMA_TOOLS_INSTALL_DEFAULT})
 option(LLAMA_TESTS_INSTALL "llama: install tests" ON)

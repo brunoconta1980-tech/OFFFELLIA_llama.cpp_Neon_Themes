@@ -1754,6 +1754,10 @@ static void set_input_kq_mask_impl(const args_set_input_kq_mask & args, T * data
 }
 
 void llama_kv_cache::set_input_kq_mask(ggml_tensor * dst, const llama_ubatch * ubatch, bool causal_attn) const {
+    set_input_kq_mask(dst, ubatch, causal_attn, n_swa);
+}
+
+void llama_kv_cache::set_input_kq_mask(ggml_tensor * dst, const llama_ubatch * ubatch, bool causal_attn, uint32_t n_swa_override) const {
     const uint32_t n_tokens = ubatch->n_tokens;
 
     GGML_ASSERT(ggml_backend_buffer_is_host(dst->buffer));
@@ -1766,10 +1770,12 @@ void llama_kv_cache::set_input_kq_mask(ggml_tensor * dst, const llama_ubatch * u
     // n_tps == n_tokens_per_stream
     const int64_t n_tps = n_tokens/n_stream;
 
+    const llama_swa_type swa_type_override = n_swa_override == 0 ? LLAMA_SWA_TYPE_NONE : swa_type;
+
     // see llama_non_causal_type
     // only the SWA cache (or the SWA layers of a single cache) become non-causal
     if (!causal_attn && hparams.non_causal_type == LLAMA_NON_CAUSAL_TYPE_SWA_ONLY) {
-        causal_attn = swa_type == LLAMA_SWA_TYPE_NONE;
+        causal_attn = swa_type_override == LLAMA_SWA_TYPE_NONE;
     }
 
     //const int64_t t_start = ggml_time_us();
@@ -1779,8 +1785,8 @@ void llama_kv_cache::set_input_kq_mask(ggml_tensor * dst, const llama_ubatch * u
         /*.ubatch           =*/ ubatch,
         /*.v_cells          =*/ v_cells,
         /*.seq_to_stream    =*/ seq_to_stream,
-        /*.n_swa            =*/ n_swa,
-        /*.swa_type         =*/ swa_type,
+        /*.n_swa            =*/ n_swa_override,
+        /*.swa_type         =*/ swa_type_override,
         /*.n_kv             =*/ n_kv,
         /*.n_stream         =*/ n_stream,
         /*.n_tps            =*/ n_tps,
@@ -2915,6 +2921,10 @@ void llama_kv_cache_context::set_input_v_idxs(ggml_tensor * dst, const llama_uba
 
 void llama_kv_cache_context::set_input_kq_mask(ggml_tensor * dst, const llama_ubatch * ubatch, bool causal_attn) const {
     kv->set_input_kq_mask(dst, ubatch, causal_attn);
+}
+
+void llama_kv_cache_context::set_input_kq_mask(ggml_tensor * dst, const llama_ubatch * ubatch, bool causal_attn, uint32_t n_swa_override) const {
+    kv->set_input_kq_mask(dst, ubatch, causal_attn, n_swa_override);
 }
 
 void llama_kv_cache_context::set_input_pos_bucket(ggml_tensor * dst, const llama_ubatch * ubatch) const {

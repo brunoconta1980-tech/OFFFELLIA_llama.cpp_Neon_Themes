@@ -1421,6 +1421,15 @@ void gguf_add_tensor(
     ctx->info.push_back(ti);
 }
 
+void gguf_set_tensor_ne0(struct gguf_context * ctx, const char * name, int64_t ne0) {
+    const int64_t tensor_id = gguf_find_tensor(ctx, name);
+    if (tensor_id < 0) {
+        GGML_ABORT("tensor not found: %s", name);
+    }
+    GGML_ASSERT(ne0 > 0);
+    ctx->info[tensor_id].t.ne[0] = ne0;
+}
+
 void gguf_set_tensor_type(struct gguf_context * ctx, const char * name, enum ggml_type type) {
     const int64_t tensor_id = gguf_find_tensor(ctx, name);
     if (tensor_id < 0) {

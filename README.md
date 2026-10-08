@@ -1,21 +1,78 @@
-# llama.cpp
-
-![llama](https://raw.githubusercontent.com/ggml-org/llama.brand/refs/heads/master/cover/llama-cpp/cover-llama-cpp-dark.svg)
+# ΩFFFΣLLIα llama.cpp
 
 <div align="center">
 
-<b>LLM inference in C/C++</b>
+<img src="./1.png" alt="llama_OFFFELLIA_1984 Banner" width="100%" style="border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 20px rgba(0, 102, 153, 0.3);" />
+
+<p align="center">
+  <img src="./2.png" alt="llama_OFFFELLIA_1984 Vintage Web UI - IBM Granite 4.2 Reasoning" width="100%" style="border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(51, 255, 102, 0.15);" />
+  <img src="./3.png" alt="PIX" width="100%" style="border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0, 102, 153, 0.2);" />
+  <img src="./4.png" alt="llama_OFFFELLIA_1984 Vintage Web UI - IBM Granite 4.2 Reasoning" width="100%" style="border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(51, 255, 102, 0.15);" />
+  <img src="./5.png" alt="llama_OFFFELLIA_1984 Vintage Web UI - IBM Granite 4.2 Reasoning" width="100%" style="border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(51, 255, 102, 0.15);" />
+  <img src="./6.png" alt="llama_OFFFELLIA_1984 Vintage Web UI - IBM Granite 4.2 Reasoning" width="100%" style="border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(51, 255, 102, 0.15);" />
+</p>
+
+**Inferência de LLM em C/C++, com a interface Web construída a partir deste código.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/github/v/release/ggml-org/llama.cpp?filter=v*&color=brightgreen)](https://github.com/ggml-org/llama.cpp/releases?q=tag:v0)
-[![Nightly](https://img.shields.io/github/v/release/ggml-org/llama.cpp?label=nightly&filter=b*&color=orange)](https://github.com/ggml-org/llama.cpp/releases?q=b)
-[![Server](https://img.shields.io/github/actions/workflow/status/ggml-org/llama.cpp/server.yml?label=Server)](https://github.com/ggml-org/llama.cpp/actions/workflows/server.yml)
-[![Docker](https://img.shields.io/github/actions/workflow/status/ggml-org/llama.cpp/docker.yml?label=Docker)](https://github.com/ggml-org/llama.cpp/actions/workflows/docker.yml)
-[![Winget](https://img.shields.io/github/actions/workflow/status/ggml-org/llama.cpp/winget.yml?label=Winget)](https://github.com/ggml-org/llama.cpp/actions/workflows/winget.yml)
+[![Upstream](https://img.shields.io/badge/upstream-ggml--org%2Fllama.cpp-lightgrey)](https://github.com/ggml-org/llama.cpp)
 
-[ggml](https://github.com/ggml-org/ggml) / [ops](https://github.com/ggml-org/llama.cpp/blob/master/docs/ops.md) / [maintainer PRs](https://github.com/ggml-org/llama.cpp/issues?q=is%3Apr%20is%3Aopen%20draft%3AFalse%20(author%3Argerganov%20OR%20author%3AKitaitiMakoto%20OR%20author%3Adanbev%20OR%20author%3Aaldehir%20OR%20author%3Amax-krasnyansky%20OR%20author%3ACISC%20OR%20author%3Aggerganov%20OR%20author%3Aam17an%20OR%20author%3Ajhen0409%20OR%20author%3Abartowski1182%20OR%20author%3Anikwen%20OR%20author%3Ahipudding%20OR%20author%3Aravi9%20OR%20author%3AServeurpersoCom%20OR%20author%3Apwilkin%20OR%20author%3Areeselevine%20OR%20author%3Angxson%20OR%20author%3Ajeffbolznv%20OR%20author%3Amarty1885%20OR%20author%3A0cc4m%20OR%20author%3ATitaniumtown%20OR%20author%3Aangt%20OR%20author%3AIMbackK%20OR%20author%3Aarthw%20OR%20author%3AJohannesGaessler%20OR%20author%3AORippler%20OR%20author%3Aruixiang63%20OR%20author%3Axctan%20OR%20author%3Aallozaur%20OR%20author%3Ayomaytk%20OR%20author%3Aaendk%20OR%20author%3Awine99%20OR%20author%3Agaugarg-nv%20OR%20author%3Ataronaeo%20OR%20author%3Aforforever73%20OR%20author%3Alhez%20OR%20author%3Anetrunnereve%20OR%20author%3Afairydreaming)%20sort%3Aupdated-desc) / [dev stats](https://github.com/ggml-org/llama.cpp-dev) / [lib llama API](https://github.com/ggml-org/llama.cpp/issues/9289) / [llama-server REST API](https://github.com/ggml-org/llama.cpp/issues/9291)
+[ggml](https://github.com/ggml-org/ggml) · [build](docs/build.md) · [server](tools/server/README.md) · [licença](LICENSE)
 
 </div>
+
+Árvore local de [llama.cpp](https://github.com/ggml-org/llama.cpp). O nome **ΩFFFΣLLIα llama.cpp** aparece no centro de qualquer página da interface, em qualquer porta do `llama-server`. Os logos SVG da interface foram substituídos pelo caractere **Ω**.
+
+## Clonar e compilar
+
+```bash
+git clone https://github.com/brunoconta1980-tech/OFFFELLIA_llama.cpp_Neon_Themes.git
+cd OFFFELLIA_llama.cpp_Neon_Themes
+
+cmake -S . -B build
+cmake --build build --target llama-server --parallel
+
+./build/bin/llama-server -m modelo.gguf
+```
+
+É preciso um compilador C++, CMake, Node.js e npm. O CMake desta árvore liga a interface Vite e não baixa `dist.tar.gz`: na primeira compilação do servidor o npm instala `tools/ui` e o Vite gera os assets. Vulkan, CUDA e os outros backends ficam desligados até serem pedidos nesse `cmake`. O guia de cada backend está em [docs/build.md](docs/build.md).
+
+## Modificações
+
+| Área | Comportamento nesta árvore |
+| --- | --- |
+| Compilação | O CMake principal força `LLAMA_BUILD_UI=ON` e `LLAMA_USE_PREBUILT_UI=OFF`. Sempre que o servidor entra no build, o Vite compila `tools/ui` a partir do código local. Um cache antigo não reativa o download. |
+| Atualização automática | A compilação não baixa `dist.tar.gz` nem consulta o Hugging Face. Não há checagem SHA-256 do pacote da interface. |
+| PWA | O service worker não é registrado e não há aviso de versão nova. `sw.js`, manifest, Workbox e `version.json` não são exigidos para embutir a interface. |
+| Favicon e SVG | `npm run build` é só `vite build`. O gerador de assets PWA não lê nem regrava `favicon.svg`. O HTML não declara favicon e o manifesto não lista ícones. |
+| Logos | O logo da barra lateral e o logo MCP renderizam **Ω** no lugar do SVG. |
+| Temas | Em **Theme** há cinco opções neon: Azul neon, Vermelho neon, Verde neon, Preto e cinza neon e Alumínio escovado. Cada uma troca a paleta e acende bordas, botões e o nome central. |
+| MCP | O proxy CORS da interface (`--ui-mcp-proxy`) fica ligado por padrão. `--no-ui-mcp-proxy` desliga. Servidores MCP ainda pedem `--mcp-servers-config` ou `--mcp-servers-json`. As ferramentas de shell continuam desligadas sem `--tools` ou `--agent`. |
+| gpt-oss-puzzle | A arquitetura entra em todo build do `libllama`. Não há opção de CMake para ligar ou desligar. `llama-quantize` aceita os tipos padrão. |
+
+## gpt-oss-puzzle
+
+O GGUF com `general.architecture = gpt-oss-puzzle` carrega, quantiza e entra no grafo desta árvore. O código está em `src/models/openai-moe-puzzle.cpp`. O CMake junta `models/*.cpp` com `CONFIGURE_DEPENDS`, no mesmo configure que já força a interface Vite (`LLAMA_BUILD_UI=ON`, `LLAMA_USE_PREBUILT_UI=OFF`). Um `cmake --build` seguinte vê o arquivo novo sem flag extra.
+
+O modelo tem 36 camadas, 64 ou 128 experts por camada, e janelas de atenção 128, 0 (atenção cheia) e 8192. A cache SWA usa a maior janela. A camada de janela 128 divide essa cache com uma máscara mais curta.
+
+`llama-quantize` aplica os tipos padrão da ferramenta: Q4_0, Q4_1, Q5_0, Q5_1, Q8_0, Q2_K, Q3_K_S, Q3_K_M, Q3_K_L, Q4_K_S, Q4_K_M, Q5_K_S, Q5_K_M, Q6_K, IQ4_NL, IQ4_XS, Q2_0, TQ1_0, TQ2_0, F16, BF16 e MXFP4_MOE. Experts que já estão em MXFP4 ou NVFP4 convertem para o tipo pedido sem `--allow-requantize`. Normas, bias e `ffn_gate_inp.weight` ficam em f32, que é a regra normal da ferramenta. IQ2_XXS, IQ2_XS, IQ3_XXS e Q2_K_S continuam pedindo imatrix.
+
+As linhas têm 2880 colunas. Tipos de bloco 32 entram direto. Tipos de bloco 256 (Q2_K, Q3_K, Q4_K, Q5_K, Q6_K, IQ4_XS, TQ1_0, TQ2_0) gravam a linha com 3072 colunas, zeros no fim, e a inferência corta esse extra. `output.weight` segue a mistura padrão e vai para q6_K, salvo Q8_0 e MXFP4_MOE. Num Q4_K_M, as primeiras e as últimas camadas de `ffn_down` sobem para q6_K.
+
+Nesta máquina, 15 GiB de RAM, use `--max-buffer-size 2048` para o tensor de expert não reservar a fatia padrão de 8 GiB. O contexto gravado no GGUF é 229376 tokens.
+
+```bash
+cmake -S . -B build
+cmake --build build --target llama-quantize -j 6
+
+./build/bin/llama-quantize --max-buffer-size 2048 \
+  modelo-gpt-oss-puzzle.gguf saida.gguf Q4_K_M 8
+```
+
+A primeira compilação do servidor precisa de Node.js e npm, porque o Vite instala as dependências da interface e gera os assets embutidos.
+
+Não exponha o `llama-server` fora da máquina enquanto o proxy MCP estiver ativo.
 
 ## Quick start
 

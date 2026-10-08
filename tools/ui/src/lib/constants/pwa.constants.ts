@@ -55,17 +55,7 @@ export const PWA_MANIFEST = {
 	background_color: THEME_COLORS.BACKGROUND_LIGHT,
 	description: 'Local AI chat interface powered by llama.cpp',
 	display: 'standalone' as const,
-	icons: [
-		{ sizes: '64x64', src: 'pwa-64x64.png', type: 'image/png' },
-		{ sizes: '192x192', src: 'pwa-192x192.png', type: 'image/png' },
-		{ purpose: 'any' as const, sizes: '512x512', src: 'pwa-512x512.png', type: 'image/png' },
-		{
-			purpose: 'maskable' as const,
-			sizes: '512x512',
-			src: 'maskable-icon-512x512.png',
-			type: 'image/png'
-		}
-	],
+	icons: [],
 	name: APP_NAME,
 	short_name: APP_NAME,
 	start_url: './',
@@ -247,40 +237,6 @@ export const PWA_ASSET_GENERATOR = {
 	XHTML: false
 } as const;
 
-export const CACHE_SETTINGS = {
-	API_CACHE_MAX_AGE_SECONDS: 60 * 60 * 24,
-	API_CACHE_MAX_ENTRIES: 50,
-	IMMUTABLE_MAX_AGE_SECONDS: 31536000,
-	MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024
-} as const;
-
-export const GLOB_PATTERNS: string[] = [
-	'**/*.{js,css,html,ico,svg,png,webp,woff,woff2,json,webmanifest}'
-];
-
-export const SW_CONFIG = {
-	CHECK_INTERVAL_MS: 60000,
-	UPDATE_FETCH_OPTIONS: {
-		CACHE: 'no-store',
-		HEADERS: {
-			CACHE: 'no-store',
-			CACHE_CONTROL: 'no-cache'
-		}
-	}
-} as const;
-
-// Runtime caching configuration for Workbox
-export const RUNTIME_CACHING = {
-	CACHE_NAME: 'api-cache',
-	HANDLER: 'NetworkFirst'
-} as const;
-
-// Workbox runtime caching patterns
-export const API_CACHING_PATTERNS = {
-	STATIC_API: /^\/(health|props|models|tools|slots|cors-proxy).*/,
-	V1_API: /^\/v1\/.*/
-} as const;
-
 // SvelteKit PWA plugin options
 export const PWA_KIT_OPTIONS = {} as const;
 
@@ -300,62 +256,20 @@ export const SPLASH_LINK = {
 import type { SvelteKitPWAOptions } from '@vite-pwa/sveltekit';
 
 export const SVELTEKIT_PWA_OPTIONS: SvelteKitPWAOptions = {
+	// No service worker is registered, and nothing polls for a newer build.
+	// selfDestroying replaces a worker left by an older build so that worker
+	// cannot keep serving its cached copy over a locally modified UI.
+	injectRegister: null,
+	selfDestroying: true,
+
 	devOptions: {
-		enabled: true,
+		enabled: false,
 		suppressWarnings: true
 	},
 
-	// SvelteKit-specific options
 	kit: {
-		// Include version file for proper cache invalidation
-		includeVersionFile: true
+		includeVersionFile: false
 	},
 
-	// Strategy: generateSW - the plugin generates a service worker automatically
-	// using Workbox. For a custom SW, use 'injectManifest' instead.
-	// Manifest configuration
-	manifest: PWA_MANIFEST,
-
-	// Workbox configuration for generateSW strategy
-	workbox: {
-		// Match all static assets in the build output.
-		// Uses '**/' because SvelteKit outputs files under _app/immutable/
-		// subdirectories.
-		globPatterns: GLOB_PATTERNS,
-		maximumFileSizeToCacheInBytes: CACHE_SETTINGS.MAX_FILE_SIZE_BYTES,
-
-		// Prevent @vite-pwa/sveltekit from auto-adding a NavigationRoute by
-		// setting navigateFallback to empty string. This keeps the service
-		// worker from intercepting direct browser navigation to server API
-		// endpoints (e.g. /slots, /models, /v1/models) which should return
-		// JSON, not the SPA HTML shell. The server's own static-file fallback
-		// handles non-API navigation to index.html for the SPA router.
-		navigateFallback: '',
-
-		// Runtime caching for API calls - use NetworkFirst so APIs are always fresh
-		runtimeCaching: [
-			{
-				handler: RUNTIME_CACHING.HANDLER,
-				options: {
-					cacheName: RUNTIME_CACHING.CACHE_NAME,
-					expiration: {
-						maxAgeSeconds: CACHE_SETTINGS.API_CACHE_MAX_AGE_SECONDS,
-						maxEntries: CACHE_SETTINGS.API_CACHE_MAX_ENTRIES
-					}
-				},
-				urlPattern: API_CACHING_PATTERNS.V1_API
-			},
-			{
-				handler: RUNTIME_CACHING.HANDLER,
-				options: {
-					cacheName: RUNTIME_CACHING.CACHE_NAME,
-					expiration: {
-						maxAgeSeconds: CACHE_SETTINGS.API_CACHE_MAX_AGE_SECONDS,
-						maxEntries: CACHE_SETTINGS.API_CACHE_MAX_ENTRIES
-					}
-				},
-				urlPattern: API_CACHING_PATTERNS.STATIC_API
-			}
-		]
-	}
+	manifest: PWA_MANIFEST
 };

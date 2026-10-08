@@ -3407,7 +3407,8 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
     add_opt(common_arg(
         {"--ui-mcp-proxy", "--webui-mcp-proxy"},
         {"--no-ui-mcp-proxy", "--no-webui-mcp-proxy"},
-        "experimental: whether to enable MCP CORS proxy - do not enable in untrusted environments (default: disabled)",
+        "whether to enable the MCP CORS proxy used by the Web UI (default: enabled)\n"
+        "note: do not expose the server to untrusted environments while this is on",
         [](common_params & params, bool value) {
             params.ui_mcp_proxy = value;
         }

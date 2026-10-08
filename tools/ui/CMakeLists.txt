@@ -17,7 +17,13 @@ if(DEFINED LLAMA_WEBUI_HF_BUCKET)
     message(DEPRECATION "LLAMA_WEBUI_HF_BUCKET is deprecated, use LLAMA_UI_HF_BUCKET instead")
 endif()
 
-# Resolve HF asset version: explicit env var > derived from build number > unset
+# This tree always compiles the UI from source. A cached -D or an old
+# LLAMA_BUILD_WEBUI=OFF must not skip Vite or fetch a prebuilt bundle.
+set(LLAMA_BUILD_UI ON)
+set(LLAMA_USE_PREBUILT_UI OFF)
+message(STATUS "UI: Vite build is mandatory; prebuilt download is disabled")
+
+# Local version label passed into the Vite build. Nothing is downloaded.
 if(DEFINED ENV{HF_WEBUI_VERSION})
     set(HF_UI_VERSION "$ENV{HF_WEBUI_VERSION}")
     message(DEPRECATION "HF_WEBUI_VERSION env var is deprecated, use HF_UI_VERSION instead")

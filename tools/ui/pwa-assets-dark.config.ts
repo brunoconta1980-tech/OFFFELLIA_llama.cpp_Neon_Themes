@@ -1,16 +1,12 @@
-import { writeThemeFavicons } from './scripts/favicon-colorize';
-import { FAVICON_COLORS, PWA_ASSET_GENERATOR } from './src/lib/constants/pwa.constants';
 import { defineConfig } from '@vite-pwa/assets-generator/config';
 
-writeThemeFavicons(FAVICON_COLORS.LIGHT, FAVICON_COLORS.DARK, {
-	padding: PWA_ASSET_GENERATOR.FAVICON_PADDING
-});
-
+// Favicon and SVG image generation is disabled. This config stays so an old
+// command that still points at it does not read or rewrite those files.
 export default defineConfig({
 	headLinkOptions: {
 		preset: '2023'
 	},
-	images: ['static/favicon-dark.svg'],
+	images: [],
 	preset: {
 		apple: {
 			sizes: []
@@ -19,8 +15,6 @@ export default defineConfig({
 			sizes: []
 		},
 		transparent: {
-			favicons: [[48, 'favicon-dark.ico']],
-			padding: PWA_ASSET_GENERATOR.FAVICON_PADDING,
 			sizes: []
 		}
 	}

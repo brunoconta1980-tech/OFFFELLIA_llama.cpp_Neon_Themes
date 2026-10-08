@@ -904,8 +904,20 @@ const struct ggml_tensor * llama_model_loader::check_tensor_dims(
             is_ok = false;
         }
     } else {
+        // A quantized row may be padded up to the next block (2880 -> 3072 for block 256).
+        // Only dimension 0 grows, and by less than one block.
+        bool dim0_pad = false;
+        if (!ne.empty() && cur->ne[0] > ne[0]) {
+            const int64_t blck = ggml_blck_size(cur->type);
+            const int64_t extra = cur->ne[0] - ne[0];
+            dim0_pad = blck > 1 && extra < blck && (cur->ne[0] % blck) == 0;
+        }
         for (size_t i = 0; i < GGML_MAX_DIMS; ++i) {
-            if ((i < ne.size() && ne[i] != cur->ne[i]) || (i >= ne.size() && cur->ne[i] != 1)) {
+            if (i == 0 && dim0_pad) {
+                continue;
+            }
+            const int64_t exp = i < ne.size() ? ne[i] : 1;
+            if (cur->ne[i] != exp) {
                 is_ok = false;
                 break;
             }

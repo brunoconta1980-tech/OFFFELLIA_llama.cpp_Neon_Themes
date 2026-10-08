@@ -614,6 +614,7 @@ static bool moe_mandatory(const llm_arch arch) {
         case LLM_ARCH_HY_V3:
         case LLM_ARCH_HY_V4:
         case LLM_ARCH_OPENAI_MOE:
+        case LLM_ARCH_OPENAI_MOE_PUZZLE:
         case LLM_ARCH_LFM2MOE:
         case LLM_ARCH_SMALLTHINKER:
         case LLM_ARCH_LLADA_MOE:

@@ -1,10 +1,7 @@
 # Provision UI assets and generate ui.cpp/ui.h.
 #
-# Asset provisioning priority:
-#   1. Pre-built assets in SRC_DIST_DIR (manually built by user)
-#   2. If BUILD_UI=ON: npm build
-#   3. If above did not produce assets and HF_ENABLED=ON: HF Bucket download
-#      of dist.tar.gz (verified against dist.tar.gz.sha256)
+# The UI is built from this tree with Vite (npm). A dist/ already on disk does
+# not override source changes. Nothing is downloaded and no checksum is applied.
 
 cmake_minimum_required(VERSION 3.18)
 
@@ -61,8 +58,8 @@ function(mime_from_ext name out_var)
     set(${out_var} "${m}" PARENT_SCOPE)
 endfunction()
 
-# Fail when a dist tree is present but is missing files the UI needs at
-# runtime; catches truncated/stale asset trees early with a useful message.
+# A non-empty asset tree only needs index.html. PWA files (sw.js, manifest,
+# workbox, version.json) are not required, so a locally modified UI still embeds.
 function(ui_validate_assets files in_dir)
     list(LENGTH files n_assets)
     if(n_assets EQUAL 0)
@@ -70,74 +67,15 @@ function(ui_validate_assets files in_dir)
     endif()
 
     set(found_index FALSE)
-    set(found_manifest FALSE)
-    set(found_sw FALSE)
-    set(found_build_json FALSE)
-    set(found_version_json FALSE)
-    set(found_bundle_js FALSE)
-    set(found_bundle_css FALSE)
-    set(found_workbox_js FALSE)
-
     foreach(f ${files})
         get_filename_component(base "${f}" NAME)
         if(base STREQUAL "index.html")
             set(found_index TRUE)
-        elseif(base STREQUAL "manifest.webmanifest")
-            set(found_manifest TRUE)
-        elseif(base STREQUAL "sw.js")
-            set(found_sw TRUE)
-        elseif(base STREQUAL "build.json")
-            set(found_build_json TRUE)
-        elseif(base STREQUAL "version.json")
-            set(found_version_json TRUE)
-        elseif(base MATCHES "^bundle.*\\.js$")
-            set(found_bundle_js TRUE)
-        elseif(base MATCHES "^bundle.*\\.css$")
-            set(found_bundle_css TRUE)
-        elseif(base MATCHES "^workbox.*\\.js$")
-            set(found_workbox_js TRUE)
         endif()
     endforeach()
 
-    set(missing "")
     if(NOT found_index)
-        list(APPEND missing "index.html")
-    endif()
-    if(NOT found_manifest)
-        list(APPEND missing "manifest.webmanifest")
-    endif()
-    if(NOT found_sw)
-        list(APPEND missing "sw.js")
-    endif()
-    if(NOT found_build_json)
-        list(APPEND missing "build.json")
-    endif()
-    if(NOT found_version_json)
-        list(APPEND missing "version.json")
-    endif()
-    if(NOT found_bundle_js)
-        list(APPEND missing "bundle[hash].js")
-    endif()
-    if(NOT found_bundle_css)
-        list(APPEND missing "bundle[hash].css")
-    endif()
-    if(NOT found_workbox_js)
-        list(APPEND missing "workbox[hash].js")
-    endif()
-
-    if(missing)
-        set(listing "")
-        foreach(f ${files})
-            string(APPEND listing "    ${f}\n")
-        endforeach()
-        set(missing_list "")
-        foreach(m ${missing})
-            string(APPEND missing_list "    ${m}\n")
-        endforeach()
-        message(FATAL_ERROR
-            "UI: current asset files:\n${listing}"
-            "UI: missing required asset(s):\n${missing_list}"
-            "UI: hint: try cleaning your build directory: ${in_dir}")
+        message(FATAL_ERROR "UI: asset tree ${in_dir} has files but no index.html")
     endif()
 endfunction()
 
@@ -277,10 +215,6 @@ function(npm_build_should_skip out_var)
     set(${out_var} FALSE PARENT_SCOPE)
 
     if(NOT EXISTS "${DIST_DIR}/index.html")
-        return()
-    endif()
-
-    if(EXISTS "${STAMP_FILE}")
         return()
     endif()
 
@@ -428,111 +362,18 @@ function(resolve_version out_var)
     set(${out_var} "" PARENT_SCOPE)
 endfunction()
 
-function(hf_download version out_var out_resolved)
-    set(${out_var}      FALSE PARENT_SCOPE)
-    set(${out_resolved} ""    PARENT_SCOPE)
-
-    set(archive "${UI_BINARY_DIR}/dist.tar.gz")
-
-    # Use HF_TOKEN to benefit from higher rate limits
-    set(auth_headers "")
-    if(DEFINED ENV{HF_TOKEN} AND NOT "$ENV{HF_TOKEN}" STREQUAL "")
-        list(APPEND auth_headers "HTTPHEADER" "Authorization: Bearer $ENV{HF_TOKEN}")
-    endif()
-
-    set(candidates "")
-    if(NOT "${version}" STREQUAL "")
-        list(APPEND candidates "${version}")
-    endif()
-    list(APPEND candidates "latest")
-
-    foreach(resolved ${candidates})
-        set(base "https://huggingface.co/buckets/${HF_BUCKET}/resolve/${resolved}")
-
-        message(STATUS "UI: downloading from ${resolved}: ${base}/dist.tar.gz")
-
-        # Fetch the checksum first: when the archive we already have matches
-        # it, the expensive download is skipped and only extraction repeats.
-        file(DOWNLOAD "${base}/dist.tar.gz.sha256?download=true" "${archive}.sha256"
-            STATUS status TIMEOUT 30 ${auth_headers}
-        )
-        list(GET status 0 rc)
-        if(NOT rc EQUAL 0)
-            list(GET status 1 errmsg)
-            message(STATUS "UI: download dist.tar.gz.sha256 from ${resolved} failed: ${errmsg}")
-            continue()
-        endif()
-
-        # Validate the sha256 checksum: reject anything that is not a full
-        # 64-hex-digit digest before touching the archive.
-        file(READ "${archive}.sha256" expected)
-        string(REGEX MATCH "^[0-9a-fA-F]+" expected "${expected}")
-        string(TOLOWER "${expected}" expected)
-        string(LENGTH "${expected}" expected_len)
-        if(NOT expected_len EQUAL 64)
-            message(STATUS "UI: invalid checksum from ${resolved}")
-            continue()
-        endif()
-
-        set(actual "")
-        if(EXISTS "${archive}")
-            file(SHA256 "${archive}" actual)
-        endif()
-
-        if("${actual}" STREQUAL "${expected}")
-            message(STATUS "UI: local dist.tar.gz matches checksum from ${resolved}, skipping download")
-        else()
-            file(DOWNLOAD "${base}/dist.tar.gz?download=true" "${archive}"
-                STATUS status TIMEOUT 300 ${auth_headers}
-            )
-            list(GET status 0 rc)
-            if(NOT rc EQUAL 0)
-                list(GET status 1 errmsg)
-                message(STATUS "UI: download dist.tar.gz from ${resolved} failed: ${errmsg}")
-                continue()
-            endif()
-
-            file(SHA256 "${archive}" actual)
-            if(NOT "${actual}" STREQUAL "${expected}")
-                message(STATUS "UI: checksum mismatch for dist.tar.gz from ${resolved}")
-                continue()
-            endif()
-        endif()
-
-        # Remove the stamp with the dist tree it describes, together.
-        file(REMOVE "${STAMP_FILE}")
-        file(REMOVE_RECURSE "${DIST_DIR}")
-
-        file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${DIST_DIR}")
-
-        if(NOT EXISTS "${DIST_DIR}/index.html")
-            message(STATUS "UI: archive from ${resolved} is missing required assets")
-            continue()
-        endif()
-
-        message(STATUS "UI: archive verified and extracted")
-        set(${out_var}      TRUE          PARENT_SCOPE)
-        set(${out_resolved} "${resolved}" PARENT_SCOPE)
-        return()
-    endforeach()
-endfunction()
-
 # ---------------------------------------------------------------------------
-# 1. Priority 1: pre-built assets supplied in tools/ui/dist
-# ---------------------------------------------------------------------------
-if(EXISTS "${SRC_DIST_DIR}/index.html")
-    message(STATUS "UI: using pre-built assets from ${SRC_DIST_DIR}")
-    emit_files("${SRC_DIST_DIR}")
-    return()
-endif()
-
-# ---------------------------------------------------------------------------
-# 2. Priority 2: npm build (if BUILD_UI=ON)
+# Vite build from this tree. tools/ui/dist does not override source changes.
+# HF_ENABLED is ignored: the build never downloads a UI.
 # ---------------------------------------------------------------------------
 set(provisioned FALSE)
 
+# A stamp left by an older prebuilt download must not pin the asset tree.
+if(EXISTS "${STAMP_FILE}")
+    file(REMOVE "${STAMP_FILE}")
+endif()
+
 if(BUILD_UI)
-    # Resolve version from git build-info if not explicitly set
     resolve_version(HF_VERSION)
     npm_build(NPM_OK)
     if(NPM_OK)
@@ -540,53 +381,22 @@ if(BUILD_UI)
     endif()
 endif()
 
-# ---------------------------------------------------------------------------
-# 3. Priority 3: HF Bucket download (if npm did not produce assets and HF_ENABLED=ON)
-# ---------------------------------------------------------------------------
-if(NOT provisioned AND HF_ENABLED)
-    resolve_version(VERSION)
-
-    # Stamp a successful HF download: records bucket + requested version and
-    # lets later steps distinguish downloaded assets from locally built ones.
-    set(stamp_key "${HF_BUCKET}|${VERSION}")
-
-    set(stamp_ok FALSE)
-    if(EXISTS "${STAMP_FILE}" AND EXISTS "${DIST_DIR}/index.html" AND NOT "${VERSION}" STREQUAL "")
-        file(READ "${STAMP_FILE}" stamped)
-        string(STRIP "${stamped}" stamped)
-        if(stamped STREQUAL "${stamp_key}")
-            set(stamp_ok TRUE)
-        endif()
-    endif()
-
-    if(stamp_ok)
-        message(STATUS "UI: HF stamp matches '${stamp_key}', skipping HF fetch")
-        set(provisioned TRUE)
-    else()
-        hf_download("${VERSION}" HF_OK HF_RESOLVED)
-        if(HF_OK)
-            file(WRITE "${STAMP_FILE}" "${stamp_key}")
-            message(STATUS "UI: HF download succeeded, stamp updated (${stamp_key}, resolved: ${HF_RESOLVED})")
-            set(provisioned TRUE)
-        else()
-            message(STATUS "UI: HF download failed")
-        endif()
-    endif()
+if(provisioned)
+    emit_files("${DIST_DIR}")
+    return()
 endif()
 
-# ---------------------------------------------------------------------------
-# 4. Fallback: warn about stale or missing assets, then emit whatever we have
-# ---------------------------------------------------------------------------
-if(NOT provisioned)
-    if(EXISTS "${DIST_DIR}/index.html")
-        message(WARNING "UI: provisioning failed; embedding stale assets from ${DIST_DIR}")
-    else()
-        message(WARNING "UI: no assets available - building without an embedded UI. "
-                        "In a disconnected environment, download the pre-built UI "
-                        "from a llama.cpp release at "
-                        "https://github.com/ggml-org/llama.cpp/releases and "
-                        "extract to tools/ui/dist.")
-    endif()
+if(EXISTS "${SRC_DIST_DIR}/index.html")
+    message(STATUS "UI: Vite build did not produce assets; using ${SRC_DIST_DIR}")
+    emit_files("${SRC_DIST_DIR}")
+    return()
+endif()
+
+if(EXISTS "${DIST_DIR}/index.html")
+    message(WARNING "UI: Vite build failed; embedding the assets already in ${DIST_DIR}")
+else()
+    message(WARNING "UI: no assets available - building without an embedded UI. "
+                    "Install Node.js and npm, then recompile so Vite can build tools/ui.")
 endif()
 
 emit_files("${DIST_DIR}")
